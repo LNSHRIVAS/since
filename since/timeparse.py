@@ -205,7 +205,7 @@ def parse_temporal(text: str, now: datetime.datetime | None = None) -> tuple[dat
                 band_range = TIME_BANDS[band_match]
                 dt = dt.replace(hour=band_range[0], minute=0)
                 end_hour = band_range[1] if band_range[1] > band_range[0] else 24
-                end = dt.replace(hour=end_hour, minute=0)
+                end = (dt + datetime.timedelta(days=1)).replace(hour=0, minute=0) if end_hour == 24 else dt.replace(hour=end_hour, minute=0)
             else:
                 end = dt + datetime.timedelta(days=1)
 
@@ -262,7 +262,7 @@ def parse_temporal(text: str, now: datetime.datetime | None = None) -> tuple[dat
             if band_name in text and band_name not in ("midnight", "midday", "dawn"):
                 start = today_start.replace(hour=band_range[0], minute=0)
                 end_hour = band_range[1] if band_range[1] > band_range[0] else 24
-                end = today_start.replace(hour=end_hour, minute=0)
+                end = (today_start + datetime.timedelta(days=1)).replace(hour=0, minute=0) if end_hour == 24 else today_start.replace(hour=end_hour, minute=0)
                 result = (start, end)
                 break
 
