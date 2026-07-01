@@ -16,19 +16,19 @@ Zero dependencies. No AI calls. Works with any provider.
 
 ## Before and after
 
-**Before** — ask a vanilla LLM about past conversation:
+**Before** - ask a vanilla LLM about past conversation:
 
 ```
 > What did we talk about last time?
 I don't have information about previous conversations.
 ```
 
-**After** — with `since`:
+**After** - with `since`:
 
 ```
 > What did we talk about last time?
 Welcome back! It's been 2 days since we last spoke.
-We were debugging your auth flow — specifically the JWT expiry issue.
+We were debugging your auth flow - specifically the JWT expiry issue.
 ```
 
 The model sees a timeline, not a flat list.
