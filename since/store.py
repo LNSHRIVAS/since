@@ -49,13 +49,15 @@ class Store:
     def __init__(self, path: str | Path):
         self._path = Path(path)
         self._local = threading.local()
+        self._write_lock = threading.Lock()
+        _init = sqlite3.connect(str(self._path))
+        _init.execute("PRAGMA journal_mode=WAL")
+        _init.close()
 
     def _conn(self) -> sqlite3.Connection:
         if not hasattr(self._local, "conn") or self._local.conn is None:
             self._local.conn = sqlite3.connect(str(self._path))
             self._local.conn.row_factory = sqlite3.Row
-            self._local.conn.execute("PRAGMA journal_mode=WAL")
-            self._local.conn.execute("PRAGMA busy_timeout=5000")
             self._local.conn.executescript(SCHEMA)
             _migrate(self._local.conn)
             self._local.conn.execute(_INDEXES)
@@ -144,8 +146,7 @@ class Store:
     def insert_next(self, msg: Message) -> int:
         """Atomically assign turn_id and insert. Returns the assigned turn_id."""
         conn = self._conn()
-        conn.execute("BEGIN IMMEDIATE")
-        try:
+        with self._write_lock:
             turn_id = conn.execute(
                 "SELECT COALESCE(MAX(turn_id), 0) + 1 FROM messages WHERE session_id = ?",
                 (msg.session_id,),
@@ -158,9 +159,6 @@ class Store:
                  msg.ttl_class, msg.source_id, inv),
             )
             conn.commit()
-        except:
-            conn.rollback()
-            raise
         return turn_id
 
     def invalidate(self, source_id: str) -> int:
