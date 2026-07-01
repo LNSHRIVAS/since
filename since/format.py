@@ -114,13 +114,28 @@ def _build_tail(
     lines.append(f"Now: {now_str} ({band})")
 
     if history:
-        session_age = now - history[0].created_at
+        span = now - history[0].created_at
         last_gap = now - history[-1].created_at
 
-        lines.append(f"Session: {_format_timedelta_compact(session_age)} · {len(history) + 1} messages")
+        active = datetime.timedelta()
+        sittings = 1
+        for i in range(1, len(history)):
+            gap = history[i].created_at - history[i - 1].created_at
+            if gap > GAP_THRESHOLD:
+                sittings += 1
+            else:
+                active += gap
+
+        parts = [f"Session: {_format_timedelta_compact(span)}"]
+        if active.total_seconds() > 0:
+            parts.append(f"{_format_timedelta_compact(active)} active")
+        if sittings > 1:
+            parts.append(f"{sittings} sittings")
+        parts.append(f"{len(history) + 1} messages")
+        lines.append(" · ".join(parts))
 
         if last_gap > GAP_THRESHOLD:
-            lines.append(f"Gap: {_format_timedelta_short(last_gap)} between messages — welcome back!")
+            lines.append(f"Gap: {_format_timedelta_short(last_gap)} — welcome back!")
         elif last_gap.total_seconds() > 60:
             lines.append(f"Last message: {_format_timedelta_short(last_gap)}")
     else:
