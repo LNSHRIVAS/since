@@ -3,39 +3,18 @@
 [![CI](https://github.com/LNSHRIVAS/since/actions/workflows/ci.yml/badge.svg)](https://github.com/LNSHRIVAS/since/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-45%20passing-brightgreen)]()
 
-LLMs have no sense of time. `since` fixes that.
+**`since` gives anything in an LLM's context a sense of how old it is — conversation turns, file reads, tool outputs. One library, zero dependencies.**
 
 ```
 pip install pysince
 from since import Store, since_time
 ```
 
-Zero dependencies. No AI calls. Works with any provider.
-
 ---
-<img width="1024" height="506" alt="image" src="https://github.com/user-attachments/assets/b65ed224-e274-4b17-9aae-63bf06be93c2" />
 
+## For chat apps
 
-## Before and after
-
-**Before** - ask a vanilla LLM about past conversation:
-
-```
-> What did we talk about last time?
-I don't have information about previous conversations.
-```
-
-**After** - with `since`:
-
-```
-> What did we talk about last time?
-Welcome back! It's been 2 days since we last spoke.
-We were debugging your auth flow - specifically the JWT expiry issue.
-```
-
-The model sees a timeline, not a flat list.
-
-## Quick start
+Wrap your chat function with `@since_time`. Every message gets a timestamp. The model sees a timeline instead of a flat list.
 
 ```python
 from since import Store, since_time
@@ -52,47 +31,55 @@ resp = chat(messages=[{"role": "user", "content": "hello"}])
 print(resp.choices[0].message.content)
 ```
 
-The prompt sent to the model includes:
+**Before:** ask a vanilla model about past conversations. It has no memory.
+
+```
+> What did we talk about last time?
+I don't have information about previous conversations.
+```
+
+**After:** the model sees when each message happened and how long the gaps were.
+
+```
+> What did we talk about last time?
+Welcome back! It's been 2 days since we last spoke.
+We were debugging your auth flow — specifically the JWT expiry issue.
+```
+
+The prompt tail the model sees:
 
 ```
 Now: Wed Jul 01, 02:36 AM (night)
-Session: 4m · 3 messages
-Gap: 2m between messages
+Session: 9h 2m · 4m active · 3 sittings · 8 messages
+Gap: 6h between messages
 Stale: "config.py" (read:config.py) invalidated, 14m old
 ```
 
-The model sees *when* things happened, *how long ago* the last message was, and *what context is stale*.
+The model knows *when* things happened, *how long ago*, and *what context is stale*.
 
-## Stale-file detection (for coding agents)
+## For coding agents (MCP server)
 
-Files change between agent turns. `since` catches that by stamping file reads with mtime and content hash, then surfacing staleness when the file changes.
-
-```python
-from since.stale_files import stamp_file_read, check_and_invalidate
-
-# After reading a file
-stamp_file_read("config.py", store, "session_1")
-
-# Later, file changed externally
-if check_and_invalidate("config.py", store, "session_1"):
-    # Stale warning appears in the prompt tail automatically
-    stamp_file_read("config.py", store, "session_1")
-```
-
-## MCP server (for Claude Code, Cursor, etc.)
+Same primitive, aimed at files. Stamp a file when you read it. Check staleness before editing.
 
 ```
 pysince-mcp
 ```
 
-Exposes 4 tools for agent integration:
+**`stamp_file_read`** — call after reading any file you intend to edit:
+```
+Stamped read: read:/path/to/config.json
+```
 
-- **`stamp_file_read`**: stamp a file after reading it
-- **`check_staleness`**: check if a stamped file has changed
-- **`session_duration`**: how long the MCP server has been tracking file stamps
-- **`invalidate_source`**: manually mark events stale
+**`check_staleness`** — call before editing a previously-read file:
+```
+Stale=True (content changed, mtime changed) read 4m ago
+```
 
-Note: `session_duration` reflects the age of file-read stamps, not conversation length (the MCP protocol has no access to chat history).
+If the file changed, the agent re-reads it before acting on cached content. No daemon, no polling — just mtime and content hash comparison at the next turn.
+
+**Setup:** your MCP client needs a trigger line telling the agent when to call the tools. For Claude Code or Cursor, add to your system instructions:
+
+> For every file you read, call `stamp_file_read` immediately. Before any edit, call `check_staleness` on files involved in the change.
 
 ## TTL system
 
@@ -105,7 +92,7 @@ Note: `session_duration` reflects the age of file-read stamps, not conversation 
 
 ## Works with any provider
 
-OpenAI, Anthropic, Gemini: `@since_time` detects the response shape automatically. Pass `extract_reply=` for anything else.
+OpenAI, Anthropic, Gemini — `@since_time` detects the response shape automatically. Pass `extract_reply=` for anything else.
 
 ```python
 @since_time(store=store, extract_reply=lambda r: r.content[0].text)
@@ -125,11 +112,3 @@ pip install pysince
 ```
 
 The PyPI name is `pysince` (the `since` name was taken on PyPI). Import and repo are `since`.
-
-## Tests
-
-```
-pytest
-```
-
-45 tests, zero external services required.
