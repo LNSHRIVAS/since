@@ -8,7 +8,8 @@ from .models import Message, StaleInfo, TIME_OF_DAY_BANDS
 
 PROMPTING_NUDGE = (
     "Every message has a UTC timestamp. The 'Now:' line below is the "
-    "current time — use it for all time references. Never guess the time."
+    "current time. Use it for all time references. "
+    "Never guess the time. Do not include timestamps in your responses."
 )
 
 GAP_THRESHOLD = datetime.timedelta(minutes=30)
