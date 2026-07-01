@@ -180,6 +180,7 @@ HANDLERS = {
     "initialize": handle_initialize,
     "tools/list": handle_list_tools,
     "tools/call": handle_call_tool,
+    "notifications/initialized": lambda _: None,
 }
 
 
@@ -191,8 +192,10 @@ def main() -> None:
         method = req.get("method", "")
         handler = HANDLERS.get(method)
         if handler:
-            _send(handler(req))
-        else:
+            result = handler(req)
+            if result is not None:
+                _send(result)
+        elif "id" in req:
             _send(_error_result(req, f"Unknown method: {method}"))
 
 
