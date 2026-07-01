@@ -13,8 +13,8 @@ from since import Store, since_time
 Zero dependencies. No AI calls. Works with any provider.
 
 ---
+<img width="1024" height="506" alt="image" src="https://github.com/user-attachments/assets/b65ed224-e274-4b17-9aae-63bf06be93c2" />
 
-<img width="1024" height="506" alt="image" src="https://github.com/user-attachments/assets/ca95a020-7bbf-4f4b-b45b-59907e84acfa" />
 
 ## Before and after
 
