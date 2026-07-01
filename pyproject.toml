@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pysince"
+version = "0.2.0"
+description = "Temporal context for LLM conversations — time awareness + stale-context detection"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/LNSHRIVAS/since"
+Source = "https://github.com/LNSHRIVAS/since"
+
+[project.scripts]
+pysince = "since.cli:main"
+pysince-mcp = "since.mcp:main"
+
+[tool.setuptools.packages.find]
+include = ["since*"]

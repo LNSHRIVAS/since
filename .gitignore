@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.db
+dist/
+*.egg-info/
+.coverage
+.coverage.*
+htmlcov/
+.idea/
+.vscode/
+*.swp
+*.swo
