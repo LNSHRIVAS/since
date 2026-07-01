@@ -77,6 +77,10 @@ def is_stale(filepath: str, store: Store, session_id: str) -> bool:
 
 def check_and_invalidate(filepath: str, store: Store, session_id: str) -> bool:
     """Returns True if the file was found stale and invalidated."""
+    return check_and_invalidate_detail(filepath, store, session_id)["stale"]
+
+
+def check_and_invalidate_detail(filepath: str, store: Store, session_id: str) -> dict:
     path = Path(filepath).resolve()
     abs_path = str(path)
     source_id = f"read:{abs_path}"
@@ -84,20 +88,21 @@ def check_and_invalidate(filepath: str, store: Store, session_id: str) -> bool:
         current_mtime = os.path.getmtime(abs_path)
         current_hash = _file_hash(abs_path)
     except FileNotFoundError:
-        return False
+        return {"stale": False, "filepath": abs_path, "reasons": ["file not found"]}
     msgs = store.load_session(session_id)
-    found = False
     for m in reversed(msgs):
         if m.source_id == source_id and m.ttl_class == "event" and m.invalidated_at is None:
-            found = True
             stored_mtime, stored_hash = _parse_stored(m.content)
             if stored_hash is None and stored_mtime is None:
                 continue
+            reasons = []
             if stored_hash is not None and current_hash != stored_hash:
-                n = store.invalidate(source_id)
-                return n > 0
+                reasons.append("content changed")
             if stored_mtime is not None and current_mtime != stored_mtime:
-                n = store.invalidate(source_id)
-                return n > 0
-            return False
-    return found
+                reasons.append("mtime changed")
+            if reasons:
+                store.invalidate(source_id)
+                return {"stale": True, "filepath": abs_path, "reasons": reasons,
+                        "read_at": m.created_at.isoformat()}
+            return {"stale": False, "filepath": abs_path, "reasons": []}
+    return {"stale": False, "filepath": abs_path, "reasons": []}

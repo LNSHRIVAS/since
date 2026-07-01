@@ -15,7 +15,7 @@ import uuid
 from pathlib import Path
 
 from . import Store
-from .stale_files import stamp_file_read, check_and_invalidate
+from .stale_files import stamp_file_read, check_and_invalidate_detail
 
 DB_PATH = Path.home() / ".since" / "mcp.db"
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -118,17 +118,24 @@ def handle_call_tool(req: dict) -> dict:
 
         elif name == "check_staleness":
             fp = args["filepath"]
-            stale = check_and_invalidate(fp, _store, _session)
-            now = _now()
-            info = _store.session_info(_session)
-            msgs = _store.load_session(_session)
-            n_reads = sum(1 for m in msgs if m.source_id and fp in m.source_id)
-            msg = f"Stale={stale}, prior_reads={n_reads}"
-            if stale:
-                msg += " — file changed since last read, re-read recommended"
-            else:
-                msg += " — file unchanged since last read"
-            return _text_result(req, msg)
+            detail = check_and_invalidate_detail(fp, _store, _session)
+            stale = detail["stale"]
+            reasons = detail.get("reasons", [])
+            read_at = detail.get("read_at", "")
+
+            parts = [f"Stale={stale}"]
+            if stale and reasons:
+                parts.append(f"({', '.join(reasons)})")
+                if read_at:
+                    try:
+                        dt = datetime.datetime.fromisoformat(read_at)
+                        age = _now() - dt
+                        m = int(age.total_seconds() // 60)
+                        ago = f"{m}m ago" if m < 60 else f"{m // 60}h {m % 60}m ago"
+                        parts.append(f"read {ago}")
+                    except (ValueError, TypeError):
+                        pass
+            return _text_result(req, " ".join(parts))
 
         elif name == "session_duration":
             gap = "just started"
