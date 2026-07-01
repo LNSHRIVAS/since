@@ -14,6 +14,8 @@ Zero dependencies. No AI calls. Works with any provider.
 
 ---
 
+<img width="1024" height="506" alt="image" src="https://github.com/user-attachments/assets/ca95a020-7bbf-4f4b-b45b-59907e84acfa" />
+
 ## Before and after
 
 **Before** - ask a vanilla LLM about past conversation:
