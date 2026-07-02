@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pysince"
-version = "0.2.3"
+version = "0.2.4"
 description = "Temporal context for LLM conversations — time awareness + stale-context detection"
 readme = "README.md"
 requires-python = ">=3.10"

@@ -88,7 +88,7 @@ def check_and_invalidate_detail(filepath: str, store: Store, session_id: str) ->
         current_mtime = os.path.getmtime(abs_path)
         current_hash = _file_hash(abs_path)
     except FileNotFoundError:
-        return {"stale": False, "filepath": abs_path, "reasons": ["file not found"]}
+        return {"stale": False, "filepath": abs_path, "reasons": ["file not found"], "has_record": False}
     msgs = store.load_session(session_id)
     for m in reversed(msgs):
         if m.source_id == source_id and m.ttl_class == "event" and m.invalidated_at is None:
@@ -103,6 +103,6 @@ def check_and_invalidate_detail(filepath: str, store: Store, session_id: str) ->
             if reasons:
                 store.invalidate(source_id, session_id)
                 return {"stale": True, "filepath": abs_path, "reasons": reasons,
-                        "read_at": m.created_at.isoformat()}
-            return {"stale": False, "filepath": abs_path, "reasons": []}
-    return {"stale": False, "filepath": abs_path, "reasons": []}
+                        "read_at": m.created_at.isoformat(), "has_record": True}
+            return {"stale": False, "filepath": abs_path, "reasons": [], "has_record": True}
+    return {"stale": False, "filepath": abs_path, "reasons": [], "has_record": False}

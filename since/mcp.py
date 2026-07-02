@@ -27,7 +27,7 @@ _now = lambda: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 TOOLS = [
     {
         "name": "stamp_file_read",
-        "description": "Call this immediately after reading any file you intend to edit later, so you can detect if it changes underneath you. Records the file path and current mtime.",
+        "description": "Call this immediately after reading a file for the first time. Must be called BEFORE check_staleness can detect changes to that file. Records current mtime and content hash.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -38,7 +38,7 @@ TOOLS = [
     },
     {
         "name": "check_staleness",
-        "description": "Check whether a previously-read file has changed since you last read it. If Stale=True, the file was modified — re-read it before acting on cached content.",
+        "description": "Check whether a previously-stamped file has changed since you last read it. If no prior stamp exists it will tell you to stamp first. Call this before editing any file you stamped earlier — if stale, re-read it.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -92,7 +92,7 @@ def handle_initialize(req: dict) -> dict:
         "result": {
             "protocolVersion": "2024-11-05",
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "pysince-mcp", "version": "0.2.2"},
+            "serverInfo": {"name": "pysince-mcp", "version": "0.2.4"},
         },
     }
 
@@ -121,20 +121,24 @@ def handle_call_tool(req: dict) -> dict:
             detail = check_and_invalidate_detail(fp, _store, _session)
             stale = detail["stale"]
             reasons = detail.get("reasons", [])
+            has_record = detail.get("has_record", False)
             read_at = detail.get("read_at", "")
 
-            parts = [f"Stale={stale}"]
-            if stale and reasons:
-                parts.append(f"({', '.join(reasons)})")
-                if read_at:
-                    try:
-                        dt = datetime.datetime.fromisoformat(read_at)
-                        age = _now() - dt
-                        m = int(age.total_seconds() // 60)
-                        ago = f"{m}m ago" if m < 60 else f"{m // 60}h {m % 60}m ago"
-                        parts.append(f"read {ago}")
-                    except (ValueError, TypeError):
-                        pass
+            if not has_record:
+                return _text_result(req, "Stale=False (no prior stamp — call stamp_file_read first)")
+            if not stale:
+                return _text_result(req, "Stale=False (unchanged since last stamp)")
+
+            parts = [f"Stale=True ({', '.join(reasons)})"]
+            if read_at:
+                try:
+                    dt = datetime.datetime.fromisoformat(read_at)
+                    age = _now() - dt
+                    m = int(age.total_seconds() // 60)
+                    ago = f"{m}m ago" if m < 60 else f"{m // 60}h {m % 60}m ago"
+                    parts.append(f"read {ago}")
+                except (ValueError, TypeError):
+                    pass
             return _text_result(req, " ".join(parts))
 
         elif name == "session_duration":
