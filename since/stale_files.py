@@ -14,23 +14,27 @@ def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
 
-def _file_hash(path: str) -> str:
+def _file_hash(path: str) -> tuple[str, int]:
     h = hashlib.sha256()
+    lines = 0
     with open(path, "rb") as f:
         while True:
             chunk = f.read(65536)
             if not chunk:
                 break
             h.update(chunk)
-    return h.hexdigest()[:12]
+            lines += chunk.count(b"\n")
+    return h.hexdigest()[:12], lines
 
 
-def _parse_stored(content: str) -> tuple[float | None, str | None]:
+def _parse_stored(content: str) -> tuple[float | None, str | None, int | None]:
     mtime_m = re.search(r"mtime=([\d.]+)", content)
     hash_m = re.search(r"hash=([a-f0-9]+)", content)
+    lines_m = re.search(r"lines=(\d+)", content)
     mtime = float(mtime_m.group(1)) if mtime_m else None
     digest = hash_m.group(1) if hash_m else None
-    return mtime, digest
+    lines = int(lines_m.group(1)) if lines_m else None
+    return mtime, digest, lines
 
 
 def stamp_file_read(filepath: str, store: Store, session_id: str) -> str:
@@ -39,10 +43,10 @@ def stamp_file_read(filepath: str, store: Store, session_id: str) -> str:
         raise FileNotFoundError(str(path))
     abs_path = str(path)
     mtime = os.path.getmtime(abs_path)
-    digest = _file_hash(abs_path)
+    digest, lines = _file_hash(abs_path)
     source_id = f"read:{path}"
     store.invalidate(source_id, session_id)
-    content = f"[FILE READ] {path} (mtime={mtime}, hash={digest})"
+    content = f"[FILE READ] {path} (mtime={mtime}, hash={digest}, lines={lines})"
     msg = Message(session_id, 0, "user", content, _now(),
                   ttl_class="event", source_id=source_id)
     store.insert_next(msg)
@@ -59,12 +63,12 @@ def is_stale(filepath: str, store: Store, session_id: str) -> bool:
         return True
     abs_path = str(path)
     current_mtime = os.path.getmtime(abs_path)
-    current_hash = _file_hash(abs_path)
+    current_hash, _ = _file_hash(abs_path)
     source_id = f"read:{path}"
     msgs = store.load_session(session_id)
     for m in reversed(msgs):
         if m.source_id == source_id and m.ttl_class == "event" and m.invalidated_at is None:
-            stored_mtime, stored_hash = _parse_stored(m.content)
+            stored_mtime, stored_hash, _ = _parse_stored(m.content)
             if stored_hash is None and stored_mtime is None:
                 continue
             if stored_hash is not None and current_hash != stored_hash:
@@ -86,13 +90,13 @@ def check_and_invalidate_detail(filepath: str, store: Store, session_id: str) ->
     source_id = f"read:{abs_path}"
     try:
         current_mtime = os.path.getmtime(abs_path)
-        current_hash = _file_hash(abs_path)
+        current_hash, current_lines = _file_hash(abs_path)
     except FileNotFoundError:
         return {"stale": False, "filepath": abs_path, "reasons": ["file not found"], "has_record": False}
     msgs = store.load_session(session_id)
     for m in reversed(msgs):
         if m.source_id == source_id and m.ttl_class == "event" and m.invalidated_at is None:
-            stored_mtime, stored_hash = _parse_stored(m.content)
+            stored_mtime, stored_hash, stored_lines = _parse_stored(m.content)
             if stored_hash is None and stored_mtime is None:
                 continue
             reasons = []
@@ -102,7 +106,12 @@ def check_and_invalidate_detail(filepath: str, store: Store, session_id: str) ->
                 reasons.append("mtime changed")
             if reasons:
                 store.invalidate(source_id, session_id)
-                return {"stale": True, "filepath": abs_path, "reasons": reasons,
-                        "read_at": m.created_at.isoformat(), "has_record": True}
+                result = {"stale": True, "filepath": abs_path, "reasons": reasons,
+                          "read_at": m.created_at.isoformat(), "has_record": True}
+                if stored_lines is not None and current_lines is not None:
+                    delta = current_lines - stored_lines
+                    if delta != 0:
+                        result["line_delta"] = f"{'+' if delta > 0 else ''}{delta}"
+                return result
             return {"stale": False, "filepath": abs_path, "reasons": [], "has_record": True}
     return {"stale": False, "filepath": abs_path, "reasons": [], "has_record": False}

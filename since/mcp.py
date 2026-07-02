@@ -92,7 +92,7 @@ def handle_initialize(req: dict) -> dict:
         "result": {
             "protocolVersion": "2024-11-05",
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "pysince-mcp", "version": "0.2.4"},
+            "serverInfo": {"name": "pysince-mcp", "version": "0.2.5"},
         },
     }
 
@@ -125,7 +125,7 @@ def handle_call_tool(req: dict) -> dict:
             read_at = detail.get("read_at", "")
 
             if not has_record:
-                return _text_result(req, "Stale=False (no prior stamp — call stamp_file_read first)")
+                return _text_result(req, "No prior stamp — call stamp_file_read first")
             if not stale:
                 return _text_result(req, "Stale=False (unchanged since last stamp)")
 
@@ -139,6 +139,9 @@ def handle_call_tool(req: dict) -> dict:
                     parts.append(f"read {ago}")
                 except (ValueError, TypeError):
                     pass
+            line_delta = detail.get("line_delta")
+            if line_delta:
+                parts.append(f"({line_delta} lines)")
             return _text_result(req, " ".join(parts))
 
         elif name == "session_duration":
