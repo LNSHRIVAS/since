@@ -92,7 +92,7 @@ def handle_initialize(req: dict) -> dict:
         "result": {
             "protocolVersion": "2024-11-05",
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "pysince-mcp", "version": "0.2.6"},
+            "serverInfo": {"name": "pysince-mcp", "version": "0.2.7"},
         },
     }
 
@@ -196,7 +196,7 @@ def _drift_report() -> str:
         if ld:
             parts.append(f"({ld} lines)")
         lines.append(" ".join(parts))
-    return "Drifted files:\n" + "\n".join(lines)
+    return "Files changed since last read:\n" + "\n".join(lines)
 
 
 def _error_result(req: dict, msg: str) -> dict:
