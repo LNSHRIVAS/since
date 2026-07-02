@@ -84,6 +84,47 @@ def check_and_invalidate(filepath: str, store: Store, session_id: str) -> bool:
     return check_and_invalidate_detail(filepath, store, session_id)["stale"]
 
 
+def drifted_files(store: Store, session_id: str) -> list[dict]:
+    """Return all tracked files that have drifted since last stamped."""
+    msgs = store.load_session(session_id)
+    seen = {}
+    for m in msgs:
+        if m.source_id and m.ttl_class == "event" and m.invalidated_at is None:
+            if m.source_id not in seen:
+                stored_mtime, stored_hash, stored_lines = _parse_stored(m.content)
+                if stored_hash is not None or stored_mtime is not None:
+                    seen[m.source_id] = (stored_mtime, stored_hash, stored_lines, m.created_at)
+
+    drifted = []
+    for source_id, (stored_mtime, stored_hash, stored_lines, created_at) in seen.items():
+        filepath = source_id[len("read:"):]
+        try:
+            current_mtime = os.path.getmtime(filepath)
+        except FileNotFoundError:
+            continue
+
+        if stored_mtime is not None and current_mtime == stored_mtime:
+            continue
+
+        current_hash, current_lines = _file_hash(filepath)
+        reasons = []
+        if stored_hash is not None and current_hash != stored_hash:
+            reasons.append("content changed")
+        if stored_mtime is not None and current_mtime != stored_mtime:
+            reasons.append("mtime changed")
+
+        if reasons:
+            d = {"filepath": filepath, "reasons": reasons,
+                 "read_at": created_at.isoformat(), "has_record": True}
+            if stored_lines is not None and current_lines is not None:
+                delta = current_lines - stored_lines
+                if delta != 0:
+                    d["line_delta"] = f"{'+' if delta > 0 else ''}{delta}"
+            drifted.append(d)
+
+    return drifted
+
+
 def check_and_invalidate_detail(filepath: str, store: Store, session_id: str) -> dict:
     path = Path(filepath).resolve()
     abs_path = str(path)

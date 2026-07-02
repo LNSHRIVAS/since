@@ -15,7 +15,7 @@ import uuid
 from pathlib import Path
 
 from . import Store
-from .stale_files import stamp_file_read, check_and_invalidate_detail
+from .stale_files import stamp_file_read, check_and_invalidate_detail, drifted_files
 
 DB_PATH = Path.home() / ".since" / "mcp.db"
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -92,7 +92,7 @@ def handle_initialize(req: dict) -> dict:
         "result": {
             "protocolVersion": "2024-11-05",
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "pysince-mcp", "version": "0.2.5"},
+            "serverInfo": {"name": "pysince-mcp", "version": "0.2.6"},
         },
     }
 
@@ -168,11 +168,35 @@ def handle_call_tool(req: dict) -> dict:
 
 
 def _text_result(req: dict, text: str) -> dict:
+    drift = _drift_report()
+    full = f"{text}\n\n{drift}" if drift else text
     return {
         "jsonrpc": "2.0",
         "id": req.get("id"),
-        "result": {"content": [{"type": "text", "text": text}]},
+        "result": {"content": [{"type": "text", "text": full}]},
     }
+
+
+def _drift_report() -> str:
+    drifted = drifted_files(_store, _session)
+    if not drifted:
+        return ""
+    lines = []
+    for d in drifted:
+        parts = [f"• {d['filepath']} ({', '.join(d['reasons'])})"]
+        try:
+            dt = datetime.datetime.fromisoformat(d["read_at"])
+            age = _now() - dt
+            m = int(age.total_seconds() // 60)
+            ago = f"{m}m ago" if m < 60 else f"{m // 60}h {m % 60}m ago"
+            parts.append(f"read {ago}")
+        except (ValueError, TypeError):
+            pass
+        ld = d.get("line_delta")
+        if ld:
+            parts.append(f"({ld} lines)")
+        lines.append(" ".join(parts))
+    return "Drifted files:\n" + "\n".join(lines)
 
 
 def _error_result(req: dict, msg: str) -> dict:
