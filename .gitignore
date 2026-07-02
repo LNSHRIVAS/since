@@ -11,3 +11,7 @@ htmlcov/
 .vscode/
 *.swp
 *.swo
+chat.py
+test_live.py
+PLAN.md
+TTL_SPEC.md
