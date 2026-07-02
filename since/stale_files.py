@@ -41,7 +41,7 @@ def stamp_file_read(filepath: str, store: Store, session_id: str) -> str:
     mtime = os.path.getmtime(abs_path)
     digest = _file_hash(abs_path)
     source_id = f"read:{path}"
-    store.invalidate(source_id)
+    store.invalidate(source_id, session_id)
     content = f"[FILE READ] {path} (mtime={mtime}, hash={digest})"
     msg = Message(session_id, 0, "user", content, _now(),
                   ttl_class="event", source_id=source_id)
@@ -101,7 +101,7 @@ def check_and_invalidate_detail(filepath: str, store: Store, session_id: str) ->
             if stored_mtime is not None and current_mtime != stored_mtime:
                 reasons.append("mtime changed")
             if reasons:
-                store.invalidate(source_id)
+                store.invalidate(source_id, session_id)
                 return {"stale": True, "filepath": abs_path, "reasons": reasons,
                         "read_at": m.created_at.isoformat()}
             return {"stale": False, "filepath": abs_path, "reasons": []}

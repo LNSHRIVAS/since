@@ -47,9 +47,10 @@ _COLS_PLACEHOLDERS = "?, ?, ?, ?, ?, ?, ?, ?, ?"
 
 class Store:
     def __init__(self, path: str | Path):
-        self._path = Path(path)
+        self._path = Path(path).expanduser()
         self._local = threading.local()
         self._write_lock = threading.Lock()
+        self._path.parent.mkdir(parents=True, exist_ok=True)
         _init = sqlite3.connect(str(self._path))
         _init.execute("PRAGMA journal_mode=WAL")
         _init.close()
@@ -161,14 +162,21 @@ class Store:
             conn.commit()
         return turn_id
 
-    def invalidate(self, source_id: str) -> int:
+    def invalidate(self, source_id: str, session_id: str | None = None) -> int:
         conn = self._conn()
         now_str = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
-        cursor = conn.execute(
-            "UPDATE messages SET invalidated_at = ? "
-            "WHERE source_id = ? AND ttl_class = 'event' AND invalidated_at IS NULL",
-            (now_str, source_id),
-        )
+        if session_id is not None:
+            cursor = conn.execute(
+                "UPDATE messages SET invalidated_at = ? "
+                "WHERE source_id = ? AND session_id = ? AND ttl_class = 'event' AND invalidated_at IS NULL",
+                (now_str, source_id, session_id),
+            )
+        else:
+            cursor = conn.execute(
+                "UPDATE messages SET invalidated_at = ? "
+                "WHERE source_id = ? AND ttl_class = 'event' AND invalidated_at IS NULL",
+                (now_str, source_id),
+            )
         conn.commit()
         return cursor.rowcount
 
