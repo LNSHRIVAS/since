@@ -16,8 +16,6 @@ Zero dependencies. Works in Claude Code, Cursor, Copilot, and Antigravity. Any M
 
 ![demo](docs/demo.gif)
 
-## The problem is real and filed
-
 ## The problem is real, named, and everywhere
 
 Agents read a file, reason about it for many steps, then act on it — but the file changed underneath them, and nothing tells them. It has a name: the [stale world model problem](https://tianpan.co/blog/2026-04-10-stale-world-model-long-running-agents). On long-horizon coding tasks, frontier model success drops from around 70% to roughly 23%, and about 36% of those failures trace to context drift, not reasoning quality. The canonical shape: an agent reads a file at step 3, reasons about it through step 30, and writes it back at step 31, but another process edited it at step 17. The agent silently overwrites the newer version, and the task looks like it succeeded.
