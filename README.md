@@ -24,11 +24,11 @@ This shows up across every major agent tool:
 
 - **OpenAI Codex** [will overwrite any changes it didn't create](https://community.openai.com/t/codex-will-overwrite-any-code-changes-it-did-not-create/1362873): edit files while it works and it restores them, "every time."
 - **GitHub Copilot** agents [overwrite their own edits](https://github.com/orgs/community/discussions/163388) because "the editor's state is different from what the AI has in its session-based memory."
-- **Claude Code** [subagents read stale file versions](https://github.com/anthropics/claude-code/issues/3032), and [its file cache diverges from disk](https://github.com/anthropics/claude-code/issues/51214) with Read/Grep returning the stale copy — the reporter concludes only an out-of-band disk check catches it.
+- **Claude Code** [subagents read stale file versions](https://github.com/anthropics/claude-code/issues/3032), and [its file cache diverges from disk](https://github.com/anthropics/claude-code/issues/51214) with Read/Grep returning the stale copy - the reporter concludes only an out-of-band disk check catches it.
 - **Continue** has [the same class of bug](https://github.com/continuedev/continue/issues/9379).
 - With **parallel agents**, this compounds into [silent file overwrites and stale views of the codebase](https://www.augmentcode.com/guides/git-worktrees-parallel-ai-agent-execution), where agents "proceed silently on corrupted data rather than surfacing exceptions."
 
-It's a recognized production blocker - 32% of agent teams cite output consistency as their #1 issue ([LangChain, State of Agent Engineering 2026](https://agent-coherence.dev/)) — and there are [whole guides](https://stormap.ai/post/how-to-stop-ai-coding-agents-from-overwriting-your-work-2026) written just on stopping agents from overwriting your work.
+It's a recognized production blocker - 32% of agent teams cite output consistency as their #1 issue and there are [whole guides](https://stormap.ai/post/how-to-stop-ai-coding-agents-from-overwriting-your-work-2026) written just on stopping agents from overwriting your work.
 
 `since` is the lightweight, single-install out-of-band check: it fingerprints every file the agent reads and, on every tool call, reports which ones changed on disk before the agent acts.
 
