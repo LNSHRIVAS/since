@@ -14,7 +14,7 @@ pip install pysince
 
 Zero dependencies. Works in Claude Code, Cursor, Copilot, and Antigravity. Any MCP client.
 
-[▶ Watch demo](docs/demo.mp4)
+<video src="https://github.com/LNSHRIVAS/since/blob/main/docs/demo.mp4" autoplay loop muted playsinline width="100%"></video>
 
 ## The problem is real and filed
 
