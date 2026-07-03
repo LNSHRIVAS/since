@@ -92,7 +92,7 @@ def handle_initialize(req: dict) -> dict:
         "result": {
             "protocolVersion": "2024-11-05",
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "pysince-mcp", "version": "0.2.8"},
+            "serverInfo": {"name": "pysince-mcp", "version": "0.2.9"},
         },
     }
 

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pysince"
-version = "0.2.8"
-description = "Temporal context for LLM conversations — time awareness + stale-context detection"
+version = "0.2.9"
+description = "MCP server for coding agents: detect stale file reads before your agent acts on outdated content"
 readme = "PYPI_README.md"
 requires-python = ">=3.10"
 license = "MIT"

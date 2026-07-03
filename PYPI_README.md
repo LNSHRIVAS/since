@@ -8,7 +8,7 @@ pip install pysince
 
 ## What it does
 
-`pysince` is a local MCP server that stamps every file your agent reads with its mtime and SHA-256 hash. On any subsequent tool call, it compares stored fingerprints against the current file and surfaces all tracked files that have changed — unprompted. The agent does not need to remember to check anything.
+`pysince` is a local MCP server that stamps every file your agent reads with its mtime and SHA-256 hash. On any subsequent tool call, it compares stored fingerprints against the current file and surfaces all tracked files that have changed, unprompted. The agent does not need to remember to check anything.
 
 ```text
 Files changed since last read:
@@ -31,18 +31,6 @@ Add to your MCP client config:
   "servers": {
     "pysince": {
       "type": "stdio",
-      "command": "pysince-mcp"
-    }
-  }
-}
-```
-
-**Claude Code / Cursor / Copilot** (`.cursor/mcp.json` or client settings):
-
-```json
-{
-  "mcpServers": {
-    "pysince": {
       "command": "pysince-mcp"
     }
   }
