@@ -14,7 +14,7 @@ pip install pysince
 
 Zero dependencies. Works in Claude Code, Cursor, Copilot, and Antigravity. Any MCP client.
 
-[▶ Watch demo](https://github.com/LNSHRIVAS/since/blob/main/docs/demo.mp4)
+![demo](docs/demo.gif)
 
 ## The problem is real and filed
 
