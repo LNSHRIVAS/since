@@ -18,12 +18,21 @@ Zero dependencies. Works in Claude Code, Cursor, Copilot, and Antigravity. Any M
 
 ## The problem is real and filed
 
-This is not hypothetical. It is an open, reported failure in production agent tools:
+## The problem is real, named, and everywhere
 
-- [claude-code #3032](https://github.com/anthropics/claude-code/issues/3032): subagents read stale versions of files. The main agent sees the update, the subagent keeps acting on the old content.
-- [claude-code #51214](https://github.com/anthropics/claude-code/issues/51214): the tool's file cache diverges from disk. Read, Edit, and Grep all return the cached copy, so the agent cannot detect the divergence from inside its own loop. The reporter's conclusion is that only an out-of-band check against disk catches it.
+Agents read a file, reason about it for many steps, then act on it — but the file changed underneath them, and nothing tells them. It has a name: the [stale world model problem](https://tianpan.co/blog/2026-04-10-stale-world-model-long-running-agents). On long-horizon coding tasks, frontier model success drops from around 70% to roughly 23%, and about 36% of those failures trace to context drift, not reasoning quality. The canonical shape: an agent reads a file at step 3, reasons about it through step 30, and writes it back at step 31, but another process edited it at step 17. The agent silently overwrites the newer version, and the task looks like it succeeded.
 
-That out-of-band, disk-truth check is exactly what `since` does.
+This shows up across every major agent tool:
+
+- **OpenAI Codex** [will overwrite any changes it didn't create](https://community.openai.com/t/codex-will-overwrite-any-code-changes-it-did-not-create/1362873): edit files while it works and it restores them, "every time."
+- **GitHub Copilot** agents [overwrite their own edits](https://github.com/orgs/community/discussions/163388) because "the editor's state is different from what the AI has in its session-based memory."
+- **Claude Code** [subagents read stale file versions](https://github.com/anthropics/claude-code/issues/3032), and [its file cache diverges from disk](https://github.com/anthropics/claude-code/issues/51214) with Read/Grep returning the stale copy — the reporter concludes only an out-of-band disk check catches it.
+- **Continue** has [the same class of bug](https://github.com/continuedev/continue/issues/9379).
+- With **parallel agents**, this compounds into [silent file overwrites and stale views of the codebase](https://www.augmentcode.com/guides/git-worktrees-parallel-ai-agent-execution), where agents "proceed silently on corrupted data rather than surfacing exceptions."
+
+It's a recognized production blocker - 32% of agent teams cite output consistency as their #1 issue ([LangChain, State of Agent Engineering 2026](https://agent-coherence.dev/)) — and there are [whole guides](https://stormap.ai/post/how-to-stop-ai-coding-agents-from-overwriting-your-work-2026) written just on stopping agents from overwriting your work.
+
+`since` is the lightweight, single-install out-of-band check: it fingerprints every file the agent reads and, on every tool call, reports which ones changed on disk before the agent acts.
 
 ## What it does
 
