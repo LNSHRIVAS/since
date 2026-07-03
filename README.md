@@ -3,7 +3,7 @@
 [![CI](https://github.com/LNSHRIVAS/since/actions/workflows/ci.yml/badge.svg)](https://github.com/LNSHRIVAS/since/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-45%20passing-brightgreen)]()
 
-**Coding agents act on files they read minutes ago. Those files change — a formatter, a git pull, another agent. The agent never knows. `since` tells it, on every tool call, what changed.**
+**Coding agents act on files they read minutes ago. Those files change - a formatter, a git pull, another agent. The agent never knows. `since` tells it, on every tool call, what changed.**
 
 ```
 pip install pysince
