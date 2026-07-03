@@ -1,20 +1,80 @@
-# since: temporal context for LLMs
+# since: your agent already read it. since tells it when it changed.
 
 [![CI](https://github.com/LNSHRIVAS/since/actions/workflows/ci.yml/badge.svg)](https://github.com/LNSHRIVAS/since/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-45%20passing-brightgreen)]()
 
-**`since` gives anything in an LLM's context a sense of how old it is — conversation turns, file reads, tool outputs. One library, zero dependencies.**
+**Coding agents act on files they read minutes ago. Those files change — a formatter, a git pull, another agent. The agent never knows. `since` tells it, on every tool call, what changed.**
 
 ```
 pip install pysince
-from since import Store, since_time
 ```
+
+Zero dependencies. Works in Claude Code, Cursor, Copilot, Antigravity — any MCP client.
+
+---
+
+## What it does
+
+Every MCP tool call surfaces *all* files that changed since the agent last read them. The agent doesn't need to remember to check — `since` volunteers it.
+
+```
+Files changed since last read:
+C:\project\config.json (content changed, mtime changed) read 4m ago (+2 lines)
+C:\project\alerts.py (content changed, mtime changed) read 3m ago
+```
+
+---
+
+## When you need this
+
+**Strongest when files change outside the agent's view** — another process, a teammate editing the same repo, a formatter, a pre-commit hook, or context that drifted across a long session.
+
+**Less needed for quick single-file edits** where the agent already re-reads the file. Skip it for trivial scripts; add it when agents share files or sessions run long.
+
+---
+
+## This is a real, filed problem
+
+Agents acting on stale file contents isn't theoretical — it's filed across production tools:
+
+- [Aider #3032](https://github.com/Aider-AI/aider/issues/3032) — agent edits stale file content
+- [Aider #51214](https://github.com/Aider-AI/aider/issues/51214) — compaction loses context between turns
+- P1 context-rot issues in agent frameworks where no mechanism checks file freshness between read and edit
+
+`since` closes the gap with a single install.
+
+---
+
+## Quick start — MCP server
+
+Add to your client's MCP config:
+
+```json
+{
+  "mcpServers": {
+    "pysince": {
+      "command": "pysince-mcp"
+    }
+  }
+}
+```
+
+Then, in your agent's system instructions, add this line:
+
+> On every file you read for the first time, call `stamp_file_read`. Before editing a file you previously stamped, call `check_staleness` — if stale, re-read it. When the drift report lists changed files, re-read them before acting on their content.
+
+**Tools exposed:**
+
+- **`stamp_file_read`** — call after reading any file. Records mtime and content hash.
+- **`check_staleness`** — returns whether the file is current. Also lists all other tracked files that have changed, unprompted.
+- **`session_duration`** — how long the MCP server has been tracking.
+- **`invalidate_source`** — manually mark events stale.
 
 ---
 
 ## For chat apps
 
-Wrap your chat function with `@since_time`. Every message gets a timestamp. The model sees a timeline instead of a flat list.
+Wrap your chat function with `@since_time`. Every message gets a timestamp. The model sees a timeline, not a flat list.
 
 ```python
 from since import Store, since_time
@@ -31,74 +91,43 @@ resp = chat(messages=[{"role": "user", "content": "hello"}])
 print(resp.choices[0].message.content)
 ```
 
-**Before:** ask a vanilla model about past conversations. It has no memory.
+**Before:** ask a vanilla model about past conversations — it can't recall.
 
-```
-> What did we talk about last time?
-I don't have information about previous conversations.
-```
-
-**After:** the model sees when each message happened and how long the gaps were.
-
-```
-> What did we talk about last time?
-Welcome back! It's been 2 days since we last spoke.
-We were debugging your auth flow — specifically the JWT expiry issue.
-```
-
-The prompt tail the model sees:
+**After:** the prompt tail gives the model facts:
 
 ```
 Now: Wed Jul 01, 02:36 AM (night)
 Session: 9h 2m · 4m active · 3 sittings · 8 messages
 Gap: 6h between messages
-Stale: "config.py" (read:config.py) invalidated, 14m old
 ```
 
-The model knows *when* things happened, *how long ago*, and *what context is stale*.
+The model sees *when* things happened, how long ago, and what context is stale.
 
-## For coding agents (MCP server)
+## Works with any provider
 
-Same primitive, aimed at files. Stamp a file when you read it. Check staleness before editing.
+OpenAI, Anthropic, Gemini — detected automatically. Pass `extract_reply=` for anything else:
 
-```
-pysince-mcp
-```
-
-**`stamp_file_read`** — call after reading any file you intend to edit:
-```
-Stamped read: read:/path/to/config.json
-```
-
-**`check_staleness`** — call before editing a previously-read file:
-```
-Stale=True (content changed, mtime changed) read 4m ago
+```python
+@since_time(store=store, extract_reply=lambda r: r.content[0].text)
+def chat(messages):
+    return anthropic.messages.create(
+        model="claude-3-5-sonnet-latest",
+        messages=messages
+    )
 ```
 
-If the file changed, the agent re-reads it before acting on cached content. No daemon, no polling — just mtime and content hash comparison at the next turn.
+## How it works
 
-**Setup:** your MCP client needs a trigger line telling the agent when to call the tools. For Claude Code or Cursor, add to your system instructions:
+`since` stamps every file read with its mtime and SHA-256 hash. On any subsequent MCP call, it compares stored fingerprints against current state — mtime first (fast), full hash only if mtime changed. Results are surfaced as a drift report, unprompted, on every response.
 
-> For every file you read, call `stamp_file_read` immediately. Before any edit, call `check_staleness` on files involved in the change.
-
-## TTL system
+**TTL system** (for chat context):
 
 | Class | Decay | Use case |
 |---|---|---|
 | `permanent` | Never | Facts, identity |
 | `slow` | Session age | Normal conversation |
 | `event` | On `invalidate()` | File reads, tool outputs |
-| `ephemeral` | 5 minutes | "ok", "thanks" |
-
-## Works with any provider
-
-OpenAI, Anthropic, Gemini — `@since_time` detects the response shape automatically. Pass `extract_reply=` for anything else.
-
-```python
-@since_time(store=store, extract_reply=lambda r: r.content[0].text)
-def chat(messages):
-    return anthropic.messages.create(model="claude-3-5-sonnet-20241022", messages=messages)
-```
+| `ephemeral` | 5 minutes | Short-lived messages |
 
 ## Requirements
 
@@ -111,4 +140,6 @@ def chat(messages):
 pip install pysince
 ```
 
-The PyPI name is `pysince` (the `since` name was taken on PyPI). Import and repo are `since`.
+Import as `since`.
+
+The PyPI name is `pysince` — the `since` name was taken. Import and repo are `since`.
